@@ -1,6 +1,6 @@
 # dsh-today
 
-侧栏一颗「今天」：在 dshspace 下打开（没有就建）`days/YYYY-MM-DD`，登记成 DSH 工作区并开新会话。
+侧栏一颗日历 logo（和手机远程同一排、同样 36px 圆标，没有「今天」文字）：在 dshspace 下打开（没有就建）`days/YYYY-MM-DD`，登记成 DSH 工作区并开新会话。
 
 路径不写死操作系统：
 

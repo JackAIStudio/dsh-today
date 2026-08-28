@@ -6,12 +6,18 @@ window.__ModuleLoader__.load({
     const h = React.createElement
 
     const css = [
-      '.dsh-today{appearance:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:32px;padding:0 10px;border:none;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:13px;line-height:20px;cursor:pointer}',
+      /* Match dsh-mobile-plus `.mp-trigger`: one quiet 36px logo on the Settings row. */
+      '.dsh-today{position:relative;flex:none;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:none;border-radius:50%;padding:0;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;transition:background-color 120ms ease,color 120ms ease,box-shadow 120ms ease}',
+      '[class*="_footArea"]:has(.dsh-today-wide){flex-direction:row;align-items:center;gap:4px}',
+      '[class*="_footArea"]:has(.dsh-today-wide) [class*="_settingsArea"]{flex:1 1 auto;width:auto;min-width:0}',
+      '[class*="_footArea"]:has(.dsh-today-wide) [class*="_footerActions"]{order:2;flex:none;width:auto;align-items:center;justify-content:flex-end}',
       '.dsh-today:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
-      '.dsh-today:disabled{opacity:.55;cursor:default}',
-      '.dsh-today-icon{display:block;flex:none}',
-      '.dsh-today-wide{width:100%;justify-content:flex-start;padding:6px 10px}',
+      '.dsh-today:active:not(:disabled){background:var(--dsw-alias-interactive-bg-active)}',
+      '.dsh-today:focus-visible{outline:none;box-shadow:0 0 0 2px var(--dsw-alias-bg-layer-2),0 0 0 4px var(--dsw-alias-brand-primary)}',
+      '.dsh-today:disabled{opacity:.5;cursor:default}',
+      '.dsh-today svg{display:block;flex:none}',
       '.dsh-today-err{position:absolute;left:8px;right:8px;bottom:48px;padding:6px 8px;border-radius:8px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-state-error-primary);font-size:12px;line-height:18px;box-shadow:var(--dsw-shadow-lv2)}',
+      '@media (prefers-reduced-motion: reduce){.dsh-today{transition:none}}',
     ].join('')
 
     if (typeof document !== 'undefined') {
@@ -26,9 +32,9 @@ window.__ModuleLoader__.load({
       tag.textContent = css
     }
 
-    function IconCalendar({ size = 16 }) {
+    /** Calendar with today's cell filled — no label, same stroke language as the phone logo. */
+    function IconToday({ size = 18 }) {
       return h('svg', {
-        className: 'dsh-today-icon',
         width: size,
         height: size,
         viewBox: '0 0 16 16',
@@ -37,10 +43,11 @@ window.__ModuleLoader__.load({
       },
         h('rect', { x: 2.5, y: 3.5, width: 11, height: 10, rx: 1.5, stroke: 'currentColor', strokeWidth: 1.25 }),
         h('path', { d: 'M2.5 6.5h11', stroke: 'currentColor', strokeWidth: 1.25 }),
-        h('path', { d: 'M5.5 2.5v2M10.5 2.5v2', stroke: 'currentColor', strokeWidth: 1.25, strokeLinecap: 'round' }))
+        h('path', { d: 'M5.5 2.5v2M10.5 2.5v2', stroke: 'currentColor', strokeWidth: 1.25, strokeLinecap: 'round' }),
+        h('rect', { x: 6.25, y: 8.5, width: 3.5, height: 3.5, rx: 0.6, fill: 'currentColor' }))
     }
 
-    function TodayButton({ wide, workspaces, sessions }) {
+    function TodayButton({ wide, workspaces }) {
       const [busy, setBusy] = React.useState(false)
       const [error, setError] = React.useState('')
 
@@ -68,23 +75,21 @@ window.__ModuleLoader__.load({
           type: 'button',
           className: wide === false ? 'dsh-today' : 'dsh-today dsh-today-wide',
           disabled: busy,
-          title: '打开今天的工作区（dshspace/days/当天日期）',
-          'aria-label': '今天',
+          title: busy ? '正在打开今天的工作区' : '打开今天的工作区',
+          'aria-label': busy ? '正在打开今天的工作区' : '打开今天的工作区',
           onClick: () => { void openToday() },
-        },
-          h(IconCalendar, { size: 16 }),
-          wide === false ? null : (busy ? '打开中…' : '今天')),
+        }, h(IconToday, { size: 18 })),
         error ? h('p', { className: 'dsh-today-err', role: 'alert' }, [error]) : null)
     }
 
-    const inject = ['slots', 'workspaces', 'sessions']
+    const inject = ['slots', 'workspaces']
 
     function apply(ctx) {
       ctx.slots.inject('sidebar.footer.action', () => {
         let dispose
         try {
           dispose = ctx.slots.register({ name: 'sidebar.footer.action', id: 'dsh-today' }, (props) =>
-            h(TodayButton, { wide: props && props.wide, workspaces: ctx.workspaces, sessions: ctx.sessions }))
+            h(TodayButton, { wide: props && props.wide, workspaces: ctx.workspaces }))
         } catch {
           dispose = undefined
         }

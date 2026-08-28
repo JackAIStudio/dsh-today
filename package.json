@@ -1,0 +1,54 @@
+{
+  "name": "dsh-today",
+  "version": "0.1.0",
+  "private": true,
+  "description": "One-click DSH workspace for today: dshspace/days/YYYY-MM-DD. Root is config/env/home, not an OS-specific path.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "resolve.js",
+    "cordis.patch.yml",
+    "LICENSE",
+    "README.zh.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JackAIStudio/dsh-today.git"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-ui-sidebar"
+      ],
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "workspace"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  }
+}

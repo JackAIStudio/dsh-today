@@ -6,7 +6,6 @@ window.__ModuleLoader__.load({
     const h = React.createElement
 
     const css = [
-      /* Match dsh-mobile-plus `.mp-trigger`: one quiet 36px logo on the Settings row. */
       '.dsh-today{position:relative;flex:none;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:none;border-radius:50%;padding:0;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;transition:background-color 120ms ease,color 120ms ease,box-shadow 120ms ease}',
       '[class*="_footArea"]:has(.dsh-today-wide){flex-direction:row;align-items:center;gap:4px}',
       '[class*="_footArea"]:has(.dsh-today-wide) [class*="_settingsArea"]{flex:1 1 auto;width:auto;min-width:0}',
@@ -17,6 +16,13 @@ window.__ModuleLoader__.load({
       '.dsh-today:disabled{opacity:.5;cursor:default}',
       '.dsh-today svg{display:block;flex:none}',
       '.dsh-today-err{position:absolute;left:8px;right:8px;bottom:48px;padding:6px 8px;border-radius:8px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-state-error-primary);font-size:12px;line-height:18px;box-shadow:var(--dsw-shadow-lv2)}',
+      /* Top placement stopgap (until host ships sidebar.top.action, see docs/host-top-slot-proposal.md). */
+      'body.dsh-today-boot .dsh-today{visibility:hidden}',
+      '[class*="_root"]:has(>button[class*="_newSession"]){position:relative}',
+      '.dsh-today-top{position:absolute;right:14px;display:flex;align-items:center;justify-content:center;width:36px}',
+      '[data-dsh-today-top]>button[class*="_newSession"]{margin-right:46px}',
+      '[data-dsh-today-top][class*="_collapsed"]>button[class*="_newSession"]{margin-right:0}',
+      '[data-dsh-today-top][class*="_collapsed"] .dsh-today-top{position:static;height:36px;margin:0 0 12px}',
       '@media (prefers-reduced-motion: reduce){.dsh-today{transition:none}}',
     ].join('')
 
@@ -34,13 +40,7 @@ window.__ModuleLoader__.load({
 
     /** Calendar with today's cell filled — no label, same stroke language as the phone logo. */
     function IconToday({ size = 18 }) {
-      return h('svg', {
-        width: size,
-        height: size,
-        viewBox: '0 0 16 16',
-        fill: 'none',
-        'aria-hidden': 'true',
-      },
+      return h('svg', { width: size, height: size, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': 'true' },
         h('rect', { x: 2.5, y: 3.5, width: 11, height: 10, rx: 1.5, stroke: 'currentColor', strokeWidth: 1.25 }),
         h('path', { d: 'M2.5 6.5h11', stroke: 'currentColor', strokeWidth: 1.25 }),
         h('path', { d: 'M5.5 2.5v2M10.5 2.5v2', stroke: 'currentColor', strokeWidth: 1.25, strokeLinecap: 'round' }),
@@ -50,7 +50,6 @@ window.__ModuleLoader__.load({
     function TodayButton({ wide, workspaces }) {
       const [busy, setBusy] = React.useState(false)
       const [error, setError] = React.useState('')
-
       async function openToday() {
         if (busy) return
         setBusy(true)
@@ -69,7 +68,6 @@ window.__ModuleLoader__.load({
           setBusy(false)
         }
       }
-
       return h('div', { style: { display: 'contents' } },
         h('button', {
           type: 'button',
@@ -80,6 +78,49 @@ window.__ModuleLoader__.load({
           onClick: () => { void openToday() },
         }, h(IconToday, { size: 18 })),
         error ? h('p', { className: 'dsh-today-err', role: 'alert' }, [error]) : null)
+    }
+
+    /* Stopgap: park the footer-rendered button beside the host New Session
+       button (DOM adoption, no second React root). Falls back to the footer
+       whenever the host structure is missing — upgrade-proof by design. */
+    function startMover() {
+      let root = null, container = null, settled = false, queued = false
+      const ourNode = () => { const b = document.querySelector('.dsh-today'); return b ? b.parentElement : null }
+      const settle = () => { if (!settled) { settled = true; document.body.classList.remove('dsh-today-boot') } }
+      const place = () => {
+        const btn = document.querySelector('button[class*="_newSession"]')
+        if (!btn) {
+          if (!root) return
+          const foot = document.querySelector('[class*="_footerActions"]'), node = ourNode()
+          if (node && foot) foot.appendChild(node)
+          if (container) container.remove()
+          root.removeAttribute('data-dsh-today-top'); root = null; container = null
+          return
+        }
+        if (btn.parentElement !== root) {
+          if (root) root.removeAttribute('data-dsh-today-top')
+          root = btn.parentElement
+          container = document.createElement('div'); container.className = 'dsh-today-top'; btn.after(container)
+        } else if (container.previousElementSibling !== btn) btn.after(container)
+        root.setAttribute('data-dsh-today-top', 'on')
+        const node = ourNode()
+        if (node && node.parentElement !== container) container.appendChild(node)
+        if (/_collapsed/.test(root.className)) { container.style.top = ''; container.style.height = '' }
+        else { container.style.top = btn.offsetTop + 'px'; container.style.height = btn.offsetHeight + 'px' }
+        settle()
+      }
+      const poke = () => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; place() }) } }
+      const obs = new MutationObserver(poke)
+      obs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] })
+      document.body.classList.add('dsh-today-boot')
+      const timer = setTimeout(settle, 3000)
+      poke()
+      return () => {
+        obs.disconnect(); clearTimeout(timer)
+        if (container) container.remove()
+        if (root) root.removeAttribute('data-dsh-today-top')
+        document.body.classList.remove('dsh-today-boot')
+      }
     }
 
     const inject = ['slots', 'workspaces']
@@ -93,7 +134,8 @@ window.__ModuleLoader__.load({
         } catch {
           dispose = undefined
         }
-        return () => { if (dispose) dispose() }
+        const stopMover = typeof document !== 'undefined' ? startMover() : null
+        return () => { if (stopMover) stopMover(); if (dispose) dispose() }
       })
     }
 

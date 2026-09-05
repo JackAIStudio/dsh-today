@@ -61,7 +61,8 @@ window.__ModuleLoader__.load({
             throw new Error((data && data.error) || '无法创建今天的工作区')
           }
           const workspace = await workspaces.create({ path: data.path })
-          workspaces.startSession(workspace.workspaceId)
+          const starter = (props?.uiWorkspace?.startSession) ? props.uiWorkspace.startSession.bind(props.uiWorkspace) : workspaces?.startSession?.bind(workspaces)
+          if (starter) starter(workspace.workspaceId)
         } catch (err) {
           setError(err instanceof Error ? err.message : String(err))
         } finally {
@@ -130,7 +131,7 @@ window.__ModuleLoader__.load({
         let dispose
         try {
           dispose = ctx.slots.register({ name: 'sidebar.footer.action', id: 'dsh-today' }, (props) =>
-            h(TodayButton, { wide: props && props.wide, workspaces: ctx.workspaces }))
+            h(TodayButton, { wide: props && props.wide, workspaces: ctx.workspaces, uiWorkspace: ctx.uiWorkspace }))
         } catch {
           dispose = undefined
         }
